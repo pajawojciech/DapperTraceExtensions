@@ -17,13 +17,10 @@ namespace DapperTraceExtensions
         /// <param name="p"></param>
         public static void WriteQuery(this DynamicParameters t, string s = "", object p = null)
         {
-#if DEBUG
-            Debug.WriteLine("DEBUG");
-            Debug.WriteLine(PrepareQuery(t, s, p));
-#else
-            Trace.WriteLine("RELEASE");
-            Trace.WriteLine(PrepareQuery(t, s, p));
-#endif
+            if (Debugger.IsAttached)
+            { 
+                Trace.WriteLine(PrepareQuery(t, s, p));
+            }
         }
 
         /// <summary>
@@ -47,37 +44,45 @@ namespace DapperTraceExtensions
             if (t != null)
             {
                 if (t.GetType().ToString() == "Dapper.DynamicParameters")
-                {
-                    sb.Append("--SQL\n");
+                {                    
                     foreach (var name in t.ParameterNames)
                     {
-                        sb2.AppendFormat("@{0} = @{0},", name);
+                        sb2.AppendLine($"@{name} = @{name}");
                         var pValue = t.Get<dynamic>(name);
                         if (pValue == null)
                         {
-                            sb.AppendFormat("DECLARE @{0} VARCHAR(MAX) \n", name);
+                            sb.AppendLine($"DECLARE @{name} NVARCHAR(MAX)");
                             continue;
                         }
                         var type = pValue.GetType();
                         if (type == typeof(DateTime))
                         {
-                            sb.AppendFormat("DECLARE @{0} DATETIME ='{1}'\n", name, pValue.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+                            sb.AppendLine($"DECLARE @{name} DATETIME ='{pValue.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
                         }
                         else if (type == typeof(bool))
                         {
-                            sb.AppendFormat("DECLARE @{0} BIT = {1}\n", name, (bool)pValue ? 1 : 0);
+                            var value = (bool)pValue ? 1 : 0;
+                            sb.AppendLine($"DECLARE @{name} BIT = {value}");
                         }
                         else if (type == typeof(int))
                         {
-                            sb.AppendFormat("DECLARE @{0} INT = {1}\n", name, pValue);
+                            sb.AppendLine($"DECLARE @{name} INT = {pValue}");
                         }
-                        else if (type == typeof(List<int>))
-                        {
-                            sb.AppendFormat("-- REPLACE @{0} IN SQL: ({1})\n", name, string.Join(",", (List<int>)pValue));
-                        }
+                        //else if (type == typeof(List<int>))
+                        //{
+                        //    sb.AppendLine($"-- REPLACE @{name} IN SQL: ({string.Join(",", (List<int>)pValue)})");
+                        //}
                         else if (type == typeof(decimal) || type == typeof(double))
                         {
-                            sb.AppendFormat("DECLARE @{0} DECIMAL({2},{3}) = {1}\n", name, pValue.ToString().Replace(",", "."), pValue.ToString().Length - 1, pValue.ToString().Split(",")[1].Length);
+                            var precision = pValue.ToString().Length - 1;
+                            var scale = 0;
+
+                            var split = pValue.ToString().Split(",");
+                            if (split.Length > 1)
+                            {
+                                scale = split[1].Length;
+                            }
+                            sb.AppendLine($"DECLARE @{name} DECIMAL({precision},{scale}) = {pValue.ToString().Replace(",", ".")}");
                         }
                         else if (type.ToString() == "Dapper.TableValuedParameter")
                         {
@@ -88,12 +93,12 @@ namespace DapperTraceExtensions
                                     var obj = (pp as Array).GetValue(pPos);
                                     if ((pp as Array).Length > pPos + 1 && (pp as Array).GetValue(pPos + 1) is string)
                                     {
-                                        sb.AppendFormat("\nDECLARE @{0} {1} \n", name, (pp as Array).GetValue(pPos + 1).ToString());
+                                        sb.AppendLine($"DECLARE @{name} {(pp as Array).GetValue(pPos + 1)}");
                                         pPos++;
                                     }
                                     else
                                     {
-                                        sb.AppendFormat("\nDECLARE @{0} dbo.TYPE \n", name);
+                                        sb.AppendLine($"DECLARE @{name} dbo.TYPE ");
 
                                     }
                                     sb.Append(PrepareTableParameters(obj, name));
@@ -102,20 +107,21 @@ namespace DapperTraceExtensions
                             }
                             else
                             {
-                                sb.AppendFormat("\nDECLARE @{0} dbo.TYPE \n", name);
+                                sb.AppendLine($"DECLARE @{name} dbo.TYPE ");
                                 sb.Append(PrepareTableParameters(pp, name));
                             }
                         }
-                        else sb.AppendFormat("DECLARE @{0} NVARCHAR(MAX) = '{1}'\n", name, pValue.ToString());
+                        else sb.AppendLine($"DECLARE @{name} NVARCHAR(MAX) = '{pValue.ToString()}'");
                     }
 
-                    sb.AppendLine(string.Format("EXEC {0} --PROCEDURE", s));
-                    if (sb2.Length > 0)
+                    if(!string.IsNullOrEmpty(s))
                     {
-                        sb2.Remove(sb2.Length - 1, 1);
-                        sb.AppendLine(sb2.ToString());
+                        sb.AppendLine(string.Format("EXEC {0} --PROCEDURE", s));
+                        if (sb2.Length > 0)
+                        {
+                            sb.Append(sb2.ToString());
+                        }
                     }
-                    sb.AppendLine("--END SQL");
                 }
             }
             else
@@ -137,7 +143,7 @@ namespace DapperTraceExtensions
             {
                 if (firstRow)
                 {
-                    sb.AppendFormat("insert into @{0} values", name);
+                    sb.AppendLine($"insert into @{name} values");
                 }
                 else
                 {
