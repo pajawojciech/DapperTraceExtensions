@@ -21,7 +21,12 @@ namespace DapperTraceExtensions
         {
             if (Debugger.IsAttached)
             {
-                Trace.WriteLine(PrepareQuery(t, s, p));
+                string result = 
+$@"--SQL
+{ PrepareQuery(t, s, p) }
+--END SQL";
+
+                Trace.WriteLine(result);
             }
         }
 
@@ -170,7 +175,7 @@ namespace DapperTraceExtensions
 
                     if (!string.IsNullOrEmpty(s))
                     {
-                        sb.AppendLine(string.Format("EXEC {0} --PROCEDURE", s));
+                        sb.AppendLine(string.Format("EXEC {0}", s));
                         if (sb2.Length > 0)
                         {
                             sb.Append(sb2.ToString());
