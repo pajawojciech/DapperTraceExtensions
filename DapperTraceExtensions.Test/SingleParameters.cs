@@ -9,7 +9,7 @@ namespace DapperTraceExtensions.Test
         DynamicParameters parameters;
         public SingleParameters()
         {
-            parameters = new ();
+            parameters = new();
         }
 
         [Fact]
@@ -40,6 +40,12 @@ DECLARE @zero INT = 0
             Assert.Equal(
 @"DECLARE @name NVARCHAR(MAX) = 'String test'
 ", result);
+        }
+
+        [Fact(Skip = "not implemented")]
+        public void TestStringSpecialChars()
+        {
+
         }
 
         [Fact]
@@ -84,7 +90,7 @@ DECLARE @false BIT = 0
 
         [Fact]
         public void TestDecimal()
-        {            
+        {
             parameters.Add("@min", decimal.MinValue);
             parameters.Add("@max", decimal.MaxValue);
             parameters.Add("@positive", 12.3456M);
