@@ -8,7 +8,8 @@
     <Version>$(VersionPrefix)1.0.3</Version>
     <RepositoryUrl>https://github.com/pajawojciech/DapperTraceExtensions</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>dapper;debug;query;tvp;parameters;trace</PackageTags>
+    <PackageTags>dapper;debug;query;tvp;parameters;trace;mssql;tsql</PackageTags>
+    <Authors>pajawojciech</Authors>
   </PropertyGroup>
 
   <ItemGroup>
