@@ -5,7 +5,12 @@ VisualStudioVersion = 17.0.31912.275
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DapperTraceExtensions", "DapperTraceExtensions\DapperTraceExtensions.csproj", "{D973BD8E-4EE9-46A3-9E00-A1F9B4B09C97}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DapperTraceExtensions.Test", "DapperTraceExtensions.Test\DapperTraceExtensions.Test.csproj", "{B6AAB700-C3E3-4B5B-9C9B-85B59D9103BD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DapperTraceExtensions.Test", "DapperTraceExtensions.Test\DapperTraceExtensions.Test.csproj", "{B6AAB700-C3E3-4B5B-9C9B-85B59D9103BD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{DF246305-1A18-474C-9E0D-140CA9CCA447}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

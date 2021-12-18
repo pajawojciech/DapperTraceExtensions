@@ -32,7 +32,7 @@ DECLARE @zero INT = 0
         [Fact]
         public void TestString()
         {
-            string value = "String test";
+            var value = "String test";
             parameters.Add("@name", value);
 
             var result = parameters.GetQuery();
@@ -45,7 +45,7 @@ DECLARE @zero INT = 0
         [Fact]
         public void TestStringSpecialChars()
         {
-            string value = @"~!@#$%^&*()_+`-={}|[]\:"";'<>?,. /";
+            var value = @"~!@#$%^&*()_+`-={}|[]\:"";'<>?,. /";
             parameters.Add("@specialChars", value);
 
             var result = parameters.GetQuery();

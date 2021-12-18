@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -17,13 +17,13 @@ namespace DapperTraceExtensions
         /// <param name="t"></param>
         /// <param name="s"></param>
         /// <param name="p"></param>
-        public static void WriteQuery(this DynamicParameters t, string s = "", object p = null)
+        public static void WriteQuery(this DynamicParameters parameters, string query = "")
         {
             if (Debugger.IsAttached)
             {
-                string result =
+                var result =
 $@"--SQL
-{ PrepareQuery(t, s, p) }
+{ PrepareQuery(parameters, query) }
 --END SQL";
 
                 Trace.WriteLine(result);
@@ -33,13 +33,13 @@ $@"--SQL
         /// <summary>
         /// Returns query string
         /// </summary>
-        /// <param name="t"></param>
+        /// <param name="parameters"></param>
         /// <param name="s"></param>
         /// <param name="p"></param>
         /// <returns></returns>
-        public static string GetQuery(this DynamicParameters t, string s = "", object p = null)
+        public static string GetQuery(this DynamicParameters parameters, string query = "")
         {
-            return PrepareQuery(t, s, p);
+            return PrepareQuery(parameters, query);
         }
 
         /// <summary>
@@ -58,27 +58,29 @@ $@"--SQL
             {
                 dataTable.Columns.Add(orderedColumnNames == null ?
                     "NONAME" : orderedColumnNames.First(), typeof(T));
-                foreach (T obj in enumerable)
+                foreach (var obj in enumerable)
                 {
                     dataTable.Rows.Add(obj);
                 }
             }
             else
             {
-                PropertyInfo[] properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-                PropertyInfo[] readableProperties = properties.Where(w => w.CanRead).ToArray();
+                var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                var readableProperties = properties.Where(w => w.CanRead).ToArray();
 
                 if (readableProperties.Length > 1 && orderedColumnNames == null)
+                {
                     throw new ArgumentException("Ordered list of column names must be provided when TVP contains more than one column");
+                }
 
                 var columnNames = (orderedColumnNames ?? readableProperties.Select(s => s.Name)).ToArray();
 
-                foreach (string name in columnNames)
+                foreach (var name in columnNames)
                 {
                     dataTable.Columns.Add(name, readableProperties.Single(s => s.Name.Equals(name)).PropertyType);
                 }
 
-                foreach (T obj in enumerable)
+                foreach (var obj in enumerable)
                 {
                     dataTable.Rows.Add(columnNames.Select(s => readableProperties.Single(s2 => s2.Name.Equals(s)).GetValue(obj)).ToArray());
                 }
@@ -86,28 +88,28 @@ $@"--SQL
             return dataTable.AsTableValuedParameter(typeName);
         }
 
-        private static string PrepareQuery(DynamicParameters t, string s = "", object pp = null)
+        private static string PrepareQuery(DynamicParameters parameters, string query = "")
         {
             var sb = new StringBuilder();
-            var sb2 = new StringBuilder();
+            var sbAdditional = new StringBuilder();
 
-            if (t != null)
+            if (parameters != null)
             {
-                foreach (var name in t.ParameterNames)
+                foreach (var name in parameters.ParameterNames)
                 {
-                    sb2.AppendLine($"@{name} = @{name}");
-                    var pValue = t.Get<dynamic>(name);
+                    sbAdditional.AppendLine($"@{name} = @{name}");
+                    var pValue = parameters.Get<dynamic>(name);
 
                     var parameter = new DynamicParameter(pValue, name);
                     sb.AppendLine(parameter.GetDeclaration());
                 }
 
-                if (!string.IsNullOrEmpty(s))
+                if (!string.IsNullOrEmpty(query))
                 {
-                    sb.AppendLine(string.Format("EXEC {0}", s));
-                    if (sb2.Length > 0)
+                    sb.AppendLine(string.Format("EXEC {0}", query));
+                    if (sbAdditional.Length > 0)
                     {
-                        sb.Append(sb2.ToString());
+                        sb.Append(sbAdditional.ToString());
                     }
                 }
             }

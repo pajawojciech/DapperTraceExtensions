@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Reflection;
@@ -8,20 +8,20 @@ namespace DapperTraceExtensions
 {
     internal class DynamicParameter
     {
-        public dynamic Parameter;
-        private readonly string Name;
+        private readonly dynamic parameter;
+        private readonly string name;
         private readonly BindingFlags bindFlags =
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
 
         public DynamicParameter(dynamic parameter, string name = null)
         {
-            Parameter = parameter;
-            Name = name;
+            this.parameter = parameter;
+            this.name = name;
         }
 
         public string GetDeclaration()
         {
-            string result = $"DECLARE @{Name} {GetTypeName()}" + (HasValue() ? $" = {GetValue()}" : "");
+            var result = $"DECLARE @{name} {GetTypeName()}" + (HasValue() ? $" = {GetValue()}" : "");
             if (IsTableValuedParameter())
             {
                 var inserts = GetInserts();
@@ -35,67 +35,67 @@ namespace DapperTraceExtensions
 
         public string GetValue()
         {
-            if (Parameter is null)
+            if (parameter is null)
             {
                 return "NULL";
             }
 
-            if (Parameter is DateTime)
+            if (parameter is DateTime)
             {
-                return $"'{Parameter.ToString("yyyy-MM-dd HH:mm:ss.fff")}'";
+                return $"'{parameter.ToString("yyyy-MM-dd HH:mm:ss.fff")}'";
             }
 
-            if (Parameter is bool)
+            if (parameter is bool)
             {
-                return Parameter ? "1" : "0";
+                return parameter ? "1" : "0";
             }
 
-            if (Parameter is int)
+            if (parameter is int)
             {
-                return $"{Parameter}";
+                return $"{parameter}";
             }
 
-            if (Parameter is decimal || Parameter is double)
+            if (parameter is decimal || parameter is double)
             {
-                return $"{Parameter.ToString().Replace(",", ".")}";
+                return $"{parameter.ToString().Replace(",", ".")}";
             }
 
-            if (Parameter.GetType().IsGenericType)
+            if (parameter.GetType().IsGenericType)
             {
-                var valueType = Parameter.GetType();
+                var valueType = parameter.GetType();
                 Type baseType = valueType.GetGenericTypeDefinition();
                 if (baseType == typeof(KeyValuePair<,>))
                 {
-                    object kvpKey = valueType.GetProperty("Key").GetValue(Parameter, null);
-                    object kvpValue = valueType.GetProperty("Value").GetValue(Parameter, null);
+                    object kvpKey = valueType.GetProperty("Key").GetValue(parameter, null);
+                    object kvpValue = valueType.GetProperty("Value").GetValue(parameter, null);
 
                     return $"{new DynamicParameter(kvpKey).GetValue()},{new DynamicParameter(kvpValue).GetValue()}";
                 }
             }
 
-            return $"'{Parameter.ToString().Replace("'", "''")}'";
+            return $"'{parameter.ToString().Replace("'", "''")}'";
         }
 
-        private bool IsTableValuedParameter() => Parameter != null && Parameter.GetType().ToString() == "Dapper.TableValuedParameter";
-        private bool HasValue() => Parameter != null && !IsTableValuedParameter();
+        private bool IsTableValuedParameter() => parameter != null && parameter.GetType().ToString() == "Dapper.TableValuedParameter";
+        private bool HasValue() => parameter != null && !IsTableValuedParameter();
         private string GetTypeName()
         {
-            if (Parameter is DateTime)
+            if (parameter is DateTime)
             {
                 return "DATETIME";
             }
 
-            if (Parameter is bool)
+            if (parameter is bool)
             {
                 return "BIT";
             }
 
-            if (Parameter is int)
+            if (parameter is int)
             {
                 return "INT";
             }
 
-            if (Parameter is decimal || Parameter is double)
+            if (parameter is decimal || parameter is double)
             {
                 var precision = GetValue().Length - 1;
                 var scale = 0;
@@ -110,8 +110,8 @@ namespace DapperTraceExtensions
 
             if (IsTableValuedParameter())
             {
-                FieldInfo nameField = Parameter.GetType().GetField("typeName", bindFlags);
-                return nameField?.GetValue(Parameter);
+                FieldInfo nameField = parameter.GetType().GetField("typeName", bindFlags);
+                return nameField?.GetValue(parameter);
             }
 
             return "NVARCHAR(MAX)";
@@ -124,20 +124,24 @@ namespace DapperTraceExtensions
                 return null;
             }
 
-            FieldInfo tableField = Parameter.GetType().GetField("table", bindFlags);
-            DataTable dataTable = tableField.GetValue(Parameter);
+            FieldInfo tableField = parameter.GetType().GetField("table", bindFlags);
+            DataTable dataTable = tableField.GetValue(parameter);
 
-            return PrepareTableParameters(dataTable, Name);
+            return PrepareTableParameters(dataTable, name);
         }
 
-        private static string PrepareTableParameters(DataTable td, string name)
+        private static string PrepareTableParameters(DataTable table, string name)
         {
-            if (td == null) return "";
-            StringBuilder sb = new StringBuilder();
-            bool firstRow = true;
-            int i = 1;
+            if (table == null)
+            {
+                return "";
+            }
 
-            foreach (DataRow row in td.Rows)
+            var sb = new StringBuilder();
+            var firstRow = true;
+            var i = 1;
+
+            foreach (DataRow row in table.Rows)
             {
                 if (firstRow)
                 {
@@ -149,15 +153,15 @@ namespace DapperTraceExtensions
                 }
                 sb.Append('(');
 
-                bool firstCol = true;
-                foreach (DataColumn column in td.Columns)
+                var firstCol = true;
+                foreach (DataColumn column in table.Columns)
                 {
                     if (!firstCol)
                     {
                         sb.Append(',');
                     }
-                    var parameter = new DynamicParameter(row[column.ColumnName]);
-                    sb.Append(parameter.GetValue());
+                    var param = new DynamicParameter(row[column.ColumnName]);
+                    sb.Append(param.GetValue());
 
                     firstCol = false;
                 }

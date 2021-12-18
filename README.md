@@ -3,10 +3,10 @@
 # DapperTraceExtensions
 Library adds extension methods to DynamicParameters class:
 
-## GetQuery
-generate query based on parameters and return string 
-![GetQuery example](./docs/GetQueryExample.png)
+## GetQuery()
+Generate query based on parameters and return string 
+![GetQuery example](https://raw.githubusercontent.com/pajawojciech/DapperTraceExtensions/main/docs/GetQueryExample.png)
 
-## WriteQuery 
-generate query based on parameters and write it to Output Debug window with comments at the beginning and end  
-![WriteQuery example](./docs/WriteQueryExample.png)
+## WriteQuery() 
+Generate query based on parameters and write it to Output Debug window with comments at the beginning and end  
+![WriteQuery example](https://raw.githubusercontent.com/pajawojciech/DapperTraceExtensions/main/docs/WriteQueryExample.png)
