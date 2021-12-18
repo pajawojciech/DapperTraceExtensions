@@ -42,10 +42,16 @@ DECLARE @zero INT = 0
 ", result);
         }
 
-        [Fact(Skip = "not implemented")]
+        [Fact]
         public void TestStringSpecialChars()
         {
+            string value = @"~!@#$%^&*()_+`-={}|[]\:"";'<>?,. /";
+            parameters.Add("@specialChars", value);
 
+            var result = parameters.GetQuery();
+
+            Assert.Equal(@"DECLARE @specialChars NVARCHAR(MAX) = '~!@#$%^&*()_+`-={}|[]\:"";''<>?,. /'
+", result);
         }
 
         [Fact]
@@ -69,8 +75,8 @@ DECLARE @zero INT = 0
             var result = parameters.GetQuery();
 
             Assert.Equal(
-@"DECLARE @min DATETIME ='0001-01-01 00:00:00.000'
-DECLARE @max DATETIME ='9999-12-31 23:59:59.999'
+@"DECLARE @min DATETIME = '0001-01-01 00:00:00.000'
+DECLARE @max DATETIME = '9999-12-31 23:59:59.999'
 ", result);
         }
 

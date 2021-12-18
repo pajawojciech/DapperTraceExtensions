@@ -21,7 +21,7 @@ namespace DapperTraceExtensions
         {
             if (Debugger.IsAttached)
             {
-                string result = 
+                string result =
 $@"--SQL
 { PrepareQuery(t, s, p) }
 --END SQL";
@@ -90,96 +90,24 @@ $@"--SQL
         {
             var sb = new StringBuilder();
             var sb2 = new StringBuilder();
-            int pPos = 0;
 
             if (t != null)
             {
-                if (t.GetType().ToString() == "Dapper.DynamicParameters")
+                foreach (var name in t.ParameterNames)
                 {
-                    foreach (var name in t.ParameterNames)
+                    sb2.AppendLine($"@{name} = @{name}");
+                    var pValue = t.Get<dynamic>(name);
+
+                    var parameter = new DynamicParameter(pValue, name);
+                    sb.AppendLine(parameter.GetDeclaration());
+                }
+
+                if (!string.IsNullOrEmpty(s))
+                {
+                    sb.AppendLine(string.Format("EXEC {0}", s));
+                    if (sb2.Length > 0)
                     {
-                        sb2.AppendLine($"@{name} = @{name}");
-                        var pValue = t.Get<dynamic>(name);
-                        if (pValue == null)
-                        {
-                            sb.AppendLine($"DECLARE @{name} NVARCHAR(MAX)");
-                            continue;
-                        }
-                        var type = pValue.GetType();
-                        if (type == typeof(DateTime))
-                        {
-                            sb.AppendLine($"DECLARE @{name} DATETIME ='{pValue.ToString("yyyy-MM-dd HH:mm:ss.fff")}'");
-                        }
-                        else if (type == typeof(bool))
-                        {
-                            var value = (bool)pValue ? 1 : 0;
-                            sb.AppendLine($"DECLARE @{name} BIT = {value}");
-                        }
-                        else if (type == typeof(int))
-                        {
-                            sb.AppendLine($"DECLARE @{name} INT = {pValue}");
-                        }
-                        //else if (type == typeof(List<int>))
-                        //{
-                        //    sb.AppendLine($"-- REPLACE @{name} IN SQL: ({string.Join(",", (List<int>)pValue)})");
-                        //}
-                        else if (type == typeof(decimal) || type == typeof(double))
-                        {
-                            var precision = pValue.ToString().Length - 1;
-                            var scale = 0;
-
-                            var split = pValue.ToString().Split(",");
-                            if (split.Length > 1)
-                            {
-                                scale = split[1].Length;
-                            }
-                            sb.AppendLine($"DECLARE @{name} DECIMAL({precision},{scale}) = {pValue.ToString().Replace(",", ".")}");
-                        }
-                        else if (type.ToString() == "Dapper.TableValuedParameter")
-                        {
-                            //if (pp is Array)
-                            //{
-                            //    if ((pp as Array).Length > pPos)
-                            //    {
-                            //        var obj = (pp as Array).GetValue(pPos);
-                            //        if ((pp as Array).Length > pPos + 1 && (pp as Array).GetValue(pPos + 1) is string)
-                            //        {
-                            //            sb.AppendLine($"DECLARE @{name} {(pp as Array).GetValue(pPos + 1)}");
-                            //            pPos++;
-                            //        }
-                            //        else
-                            //        {
-                            //            sb.AppendLine($"DECLARE @{name} dbo.TYPE ");
-
-                            //        }
-                            //        sb.Append(PrepareTableParameters(obj, name));
-                            //        pPos++;
-                            //    }
-                            //}
-                            //else
-                            {
-
-                                BindingFlags bindFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
-                                FieldInfo tableField = pValue.GetType().GetField("table", bindFlags);
-                                FieldInfo nameField = pValue.GetType().GetField("typeName", bindFlags);
-
-                                DataTable dataTable = tableField.GetValue(pValue);
-                                var typeName = nameField.GetValue(pValue);
-
-                                sb.AppendLine($"DECLARE @{name} {typeName} ");
-                                sb.Append(PrepareTableParameters(dataTable, name));
-                            }
-                        }
-                        else sb.AppendLine($"DECLARE @{name} NVARCHAR(MAX) = '{pValue.ToString()}'");
-                    }
-
-                    if (!string.IsNullOrEmpty(s))
-                    {
-                        sb.AppendLine(string.Format("EXEC {0}", s));
-                        if (sb2.Length > 0)
-                        {
-                            sb.Append(sb2.ToString());
-                        }
+                        sb.Append(sb2.ToString());
                     }
                 }
             }
@@ -190,135 +118,5 @@ $@"--SQL
 
             return sb.ToString();
         }
-
-        private static string PrepareTableParameters(DataTable td, string name)
-        {
-            if (td == null) return "";
-            StringBuilder sb = new StringBuilder();
-            bool firstRow = true;
-            int i = 1;
-
-            foreach (DataRow row in td.Rows)
-            {
-                if (firstRow)
-                {
-                    sb.AppendLine($"INSERT INTO @{name} VALUES");
-                }
-                else
-                {
-                    sb.Append(",");
-                }
-                sb.Append('(');
-
-                bool firstCol = true;
-                foreach (DataColumn column in td.Columns)
-                {
-                    if (!firstCol)
-                    {
-                        sb.Append(',');
-                    }
-                    object value = row[column.ColumnName];
-                    if (value == null)
-                    {
-                        sb.Append("NULL");
-                    }
-                    else if (value is decimal || value is double || value is int)
-                    {
-                        sb.Append($@"{value.ToString().Replace(',', '.')}");
-                    }
-                    else if (value is DateTime time)
-                    {
-                        sb.Append("'" + time.ToString("yyyy-MM-dd HH:mm:ss.fff") + "'");
-                    }
-                    else if (value.GetType().IsGenericType)
-                    {
-                        var valueType = value.GetType();
-                        Type baseType = valueType.GetGenericTypeDefinition();
-                        if (baseType == typeof(KeyValuePair<,>))
-                        {
-                            Type[] argTypes = baseType.GetGenericArguments();
-
-                            object kvpKey = valueType.GetProperty("Key").GetValue(value, null);
-                            object kvpValue = valueType.GetProperty("Value").GetValue(value, null);
-
-                            sb.Append($"'{kvpKey}','{kvpValue}'");
-                        }
-                    }
-                    else
-                    {
-                        sb.Append($@"'{value}'");
-                    }
-                    firstCol = false;
-                }
-                sb.Append(')');
-                firstRow = false;
-                if (++i == 1000)
-                {
-                    firstRow = true;
-                    i = 1;
-                    sb.AppendLine();
-                }
-            }
-            sb.AppendLine();
-            return sb.ToString();
-        }
-
-        //private static string PrepareTableParameters(object t, string name)
-        //{
-        //    if (t == null) return "";
-        //    StringBuilder sb = new StringBuilder();
-        //    bool firstRow = true;
-        //    int i = 1;
-        //    dynamic td = t;
-        //    foreach (object y in td)
-        //    {
-        //        if (firstRow)
-        //        {
-        //            sb.AppendLine($"insert into @{name} values");
-        //        }
-        //        else
-        //        {
-        //            sb.Append(",");
-        //        }
-        //        sb.Append('(');
-
-        //        bool firstCol = true;
-        //        foreach (PropertyInfo prop in y.GetType().GetProperties())
-        //        {
-        //            if (!firstCol)
-        //            {
-        //                sb.Append(',');
-        //            }
-        //            object x = prop.GetValue(y);
-        //            if (x == null)
-        //            {
-        //                sb.Append("NULL");
-        //            }
-        //            else if (x is decimal || x is double || x is int)
-        //            {
-        //                sb.Append($@"{x.ToString().Replace(',', '.')}");
-        //            }
-        //            else if (x is DateTime time)
-        //            {
-        //                sb.Append("'" + time.ToString("yyyy-MM-dd HH:mm:ss.fff") + "'");
-        //            }
-        //            else
-        //            {
-        //                sb.Append($@"'{x}'");
-        //            }
-        //            firstCol = false;
-        //        }
-        //        sb.Append(')');
-        //        firstRow = false;
-        //        if (++i == 1000)
-        //        {
-        //            firstRow = true;
-        //            i = 1;
-        //            sb.AppendLine();
-        //        }
-        //    }
-        //    sb.AppendLine();
-        //    return sb.ToString();
-        //}
     }
 }
