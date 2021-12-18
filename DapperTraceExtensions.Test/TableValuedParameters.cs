@@ -79,36 +79,63 @@ INSERT INTO @parameter VALUES
         }
 
         [Fact]
-        public void TestDictionary()
+        public void TestDictionaryEmpty()
         {
-            Dictionary<string, string> list = new()
+            Dictionary<string, int> dictionary = new();
+            parameters.Add("@parameter", dictionary.AsTableParameter("dbo.typeName"));
+
+            Assert.Equal(
+@"DECLARE @parameter dbo.typeName
+", parameters.GetQuery());
+        }
+
+        [Fact]
+        public void TestDictionaryOneSingle()
+        {
+            Dictionary<string, string> dictionary = new()
             {
-                { "a", "1" },
-                { "b", "2" }
+                { "a", "1" }
             };
-            parameters.Add("@parameter", list.AsTableParameter("dbo.typeName"));
+            parameters.Add("@parameter", dictionary.AsTableParameter("dbo.typeName"));
 
             Assert.Equal(
 @"DECLARE @parameter dbo.typeName
 INSERT INTO @parameter VALUES
-('a','1'),('b','2')
+('a','1')
 ", parameters.GetQuery());
         }
 
-        [Fact(Skip = "todo")]
+        [Fact]
         public void TestDictionaryInt()
         {
-            Dictionary<string, int> list = new()
+            Dictionary<string, int> dictionary = new()
             {
                 { "a", 1 },
                 { "b", 2 }
             };
-            parameters.Add("@parameter", list.AsTableParameter("dbo.typeName"));
+            parameters.Add("@parameter", dictionary.AsTableParameter("dbo.typeName"));
 
             Assert.Equal(
 @"DECLARE @parameter dbo.typeName
 INSERT INTO @parameter VALUES
 ('a',1),('b',2)
+", parameters.GetQuery());
+        }
+
+        [Fact]
+        public void TestDictionaryDecimalDate()
+        {
+            Dictionary<decimal, DateTime> dictionary = new()
+            {
+                { 12.34M, Convert.ToDateTime("2021-12-18 23:20") },
+                { 12.35M, Convert.ToDateTime("2021-12-18 23:21") }
+            };
+            parameters.Add("@parameter", dictionary.AsTableParameter("dbo.typeName"));
+
+            Assert.Equal(
+@"DECLARE @parameter dbo.typeName
+INSERT INTO @parameter VALUES
+(12.34,'2021-12-18 23:20:00.000'),(12.35,'2021-12-18 23:21:00.000')
 ", parameters.GetQuery());
         }
     }

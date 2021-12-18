@@ -10,10 +10,10 @@ namespace DapperTraceExtensions
     {
         public dynamic Parameter;
         private readonly string Name;
-        private readonly BindingFlags bindFlags = 
+        private readonly BindingFlags bindFlags =
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
 
-        public DynamicParameter(dynamic parameter, string name)
+        public DynamicParameter(dynamic parameter, string name = null)
         {
             Parameter = parameter;
             Name = name;
@@ -24,9 +24,56 @@ namespace DapperTraceExtensions
             string result = $"DECLARE @{Name} {GetTypeName()}" + (HasValue() ? $" = {GetValue()}" : "");
             if (IsTableValuedParameter())
             {
-                result += Environment.NewLine + GetTableValues();
+                var inserts = GetInserts();
+                if(!string.IsNullOrEmpty(inserts))
+                {
+                    result += Environment.NewLine + inserts;
+                }
             }
             return result;
+        }
+
+        public string GetValue()
+        {
+            if (Parameter is null)
+            {
+                return "NULL";
+            }
+
+            if (Parameter is DateTime)
+            {
+                return $"'{Parameter.ToString("yyyy-MM-dd HH:mm:ss.fff")}'";
+            }
+
+            if (Parameter is bool)
+            {
+                return Parameter ? "1" : "0";
+            }
+
+            if (Parameter is int)
+            {
+                return $"{Parameter}";
+            }
+
+            if (Parameter is decimal || Parameter is double)
+            {
+                return $"{Parameter.ToString().Replace(",", ".")}";
+            }
+
+            if (Parameter.GetType().IsGenericType)
+            {
+                var valueType = Parameter.GetType();
+                Type baseType = valueType.GetGenericTypeDefinition();
+                if (baseType == typeof(KeyValuePair<,>))
+                {
+                    object kvpKey = valueType.GetProperty("Key").GetValue(Parameter, null);
+                    object kvpValue = valueType.GetProperty("Value").GetValue(Parameter, null);
+
+                    return $"{new DynamicParameter(kvpKey).GetValue()},{new DynamicParameter(kvpValue).GetValue()}";
+                }
+            }
+
+            return $"'{Parameter.ToString().Replace("'", "''")}'";
         }
 
         private bool IsTableValuedParameter() => Parameter != null && Parameter.GetType().ToString() == "Dapper.TableValuedParameter";
@@ -61,7 +108,7 @@ namespace DapperTraceExtensions
                 return $"DECIMAL({precision},{scale})";
             }
 
-            if(IsTableValuedParameter())
+            if (IsTableValuedParameter())
             {
                 FieldInfo nameField = Parameter.GetType().GetField("typeName", bindFlags);
                 return nameField?.GetValue(Parameter);
@@ -70,37 +117,7 @@ namespace DapperTraceExtensions
             return "NVARCHAR(MAX)";
         }
 
-        private string GetValue()
-        {
-            if (Parameter == null)
-            {
-                return "NULL";
-            }
-
-            if (Parameter is DateTime)
-            {
-                return $"'{Parameter.ToString("yyyy-MM-dd HH:mm:ss.fff")}'";
-            }
-
-            if (Parameter is bool value)
-            {
-                return value ? "1" : "0";
-            }
-
-            if (Parameter is int)
-            {
-                return $"{Parameter}";
-            }
-
-            if (Parameter is decimal || Parameter is double)
-            {
-                return $"{Parameter.ToString().Replace(",", ".")}";
-            }
-
-            return $"'{Parameter.ToString().Replace("'", "''")}'";
-        }
-
-        private string GetTableValues()
+        private string GetInserts()
         {
             if (!IsTableValuedParameter())
             {
@@ -139,37 +156,9 @@ namespace DapperTraceExtensions
                     {
                         sb.Append(',');
                     }
-                    object value = row[column.ColumnName];
-                    if (value == null)
-                    {
-                        sb.Append("NULL");
-                    }
-                    else if (value is decimal || value is double || value is int)
-                    {
-                        sb.Append($@"{value.ToString().Replace(',', '.')}");
-                    }
-                    else if (value is DateTime time)
-                    {
-                        sb.Append("'" + time.ToString("yyyy-MM-dd HH:mm:ss.fff") + "'");
-                    }
-                    else if (value.GetType().IsGenericType)
-                    {
-                        var valueType = value.GetType();
-                        Type baseType = valueType.GetGenericTypeDefinition();
-                        if (baseType == typeof(KeyValuePair<,>))
-                        {
-                            Type[] argTypes = baseType.GetGenericArguments();
+                    var parameter = new DynamicParameter(row[column.ColumnName]);
+                    sb.Append(parameter.GetValue());
 
-                            object kvpKey = valueType.GetProperty("Key").GetValue(value, null);
-                            object kvpValue = valueType.GetProperty("Value").GetValue(value, null);
-
-                            sb.Append($"'{kvpKey}','{kvpValue}'");
-                        }
-                    }
-                    else
-                    {
-                        sb.Append($@"'{value.ToString().Replace("'", "''")}'");
-                    }
                     firstCol = false;
                 }
                 sb.Append(')');
