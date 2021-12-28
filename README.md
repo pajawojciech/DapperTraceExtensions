@@ -1,4 +1,6 @@
 [![NuGet version (DapperTraceExtensions)](https://img.shields.io/nuget/v/DapperTraceExtensions.svg?style=plastic)](https://www.nuget.org/packages/DapperTraceExtensions)
+[![NuGet downloads (DapperTraceExtensions)](https://img.shields.io/nuget/dt/DapperTraceExtensions.svg?style=plastic)](https://www.nuget.org/packages/DapperTraceExtensions)
+[![License (DapperTraceExtensions)](https://img.shields.io/github/license/pajawojciech/DapperTraceExtensions.svg?style=plastic)](https://github.com/pajawojciech/DapperTraceExtensions)
 
 # DapperTraceExtensions
 Library adds extension methods to DynamicParameters class:
