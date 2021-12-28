@@ -69,14 +69,18 @@ DECLARE @zero INT = 0
         [Fact]
         public void TestDateTime()
         {
-            parameters.Add("@min", DateTime.MinValue);
-            parameters.Add("@max", DateTime.MaxValue);
+            parameters.Add("@min", Convert.ToDateTime("1753-01-01 00:00:00.000"));
+            parameters.Add("@max", Convert.ToDateTime("9999-12-31 23:59:59.997"));
+            parameters.Add("@min2", DateTime.MinValue);
+            parameters.Add("@max2", DateTime.MaxValue);
 
             var result = parameters.GetQuery();
 
             Assert.Equal(
-@"DECLARE @min DATETIME = '0001-01-01 00:00:00.000'
-DECLARE @max DATETIME = '9999-12-31 23:59:59.999'
+@"DECLARE @min DATETIME = '1753-01-01 00:00:00.000'
+DECLARE @max DATETIME = '9999-12-31 23:59:59.997'
+DECLARE @min2 DATETIME2 = '0001-01-01 00:00:00.000'
+DECLARE @max2 DATETIME2 = '9999-12-31 23:59:59.999'
 ", result);
         }
 
@@ -106,9 +110,9 @@ DECLARE @false BIT = 0
 
             Assert.Equal(
 @"DECLARE @min DECIMAL(29,0) = -79228162514264337593543950335
-DECLARE @max DECIMAL(28,0) = 79228162514264337593543950335
+DECLARE @max DECIMAL(29,0) = 79228162514264337593543950335
 DECLARE @positive DECIMAL(6,4) = 12.3456
-DECLARE @negative DECIMAL(7,4) = -12.3456
+DECLARE @negative DECIMAL(6,4) = -12.3456
 ", result);
         }
 
@@ -118,15 +122,19 @@ DECLARE @negative DECIMAL(7,4) = -12.3456
             parameters.Add("@min", double.MinValue);
             parameters.Add("@max", double.MaxValue);
             parameters.Add("@positive", 12.3456D);
-            parameters.Add("@negative", -12.3456D);
+            parameters.Add("@negative", -12.345678901234567890123456789D);
+            parameters.Add("@positiveF", 12.3456F);
+            parameters.Add("@negativeF", -12.3456F);
 
             var result = parameters.GetQuery();
 
             Assert.Equal(
-@"DECLARE @min DECIMAL(23,21) = -1.7976931348623157E+308
-DECLARE @max DECIMAL(22,21) = 1.7976931348623157E+308
-DECLARE @positive DECIMAL(6,4) = 12.3456
-DECLARE @negative DECIMAL(7,4) = -12.3456
+@"DECLARE @min FLOAT = '-1.7976931348623157E+308'
+DECLARE @max FLOAT = '1.7976931348623157E+308'
+DECLARE @positive FLOAT = '12.3456'
+DECLARE @negative FLOAT = '-12.345678901234567'
+DECLARE @positiveF FLOAT = '12.3456'
+DECLARE @negativeF FLOAT = '-12.3456'
 ", result);
         }
 

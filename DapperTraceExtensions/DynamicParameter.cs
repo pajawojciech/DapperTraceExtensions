@@ -25,7 +25,7 @@ namespace DapperTraceExtensions
             if (IsTableValuedParameter())
             {
                 var inserts = GetInserts();
-                if(!string.IsNullOrEmpty(inserts))
+                if (!string.IsNullOrEmpty(inserts))
                 {
                     result += Environment.NewLine + inserts;
                 }
@@ -55,9 +55,14 @@ namespace DapperTraceExtensions
                 return $"{parameter}";
             }
 
-            if (parameter is decimal || parameter is double)
+            if (parameter is decimal)
             {
                 return $"{parameter.ToString().Replace(",", ".")}";
+            }
+
+            if (parameter is double || parameter is float)
+            {
+                return $"'{parameter.ToString("R").Replace(",", ".")}'";
             }
 
             if (parameter.GetType().IsGenericType)
@@ -82,6 +87,10 @@ namespace DapperTraceExtensions
         {
             if (parameter is DateTime)
             {
+                if (parameter < Convert.ToDateTime("1753-01-01") || parameter > Convert.ToDateTime("9999-12-31 23:59:59.997"))
+                {
+                    return "DATETIME2";
+                }
                 return "DATETIME";
             }
 
@@ -95,17 +104,23 @@ namespace DapperTraceExtensions
                 return "INT";
             }
 
-            if (parameter is decimal || parameter is double)
+            if (parameter is decimal)
             {
-                var precision = GetValue().Length - 1;
+                var precision = GetValue().Length - (parameter < 0 ? 1 : 0);
                 var scale = 0;
 
                 var split = GetValue().Split('.');
                 if (split.Length > 1)
                 {
                     scale = split[1].Length;
+                    precision--;
                 }
                 return $"DECIMAL({precision},{scale})";
+            }
+
+            if (parameter is double || parameter is float)
+            {
+                return "FLOAT";
             }
 
             if (IsTableValuedParameter())
